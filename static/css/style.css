@@ -610,12 +610,6 @@ h4 { font-size: 1.08rem; margin: 0 0 6px; font-weight: 550; }
 .eq-small { font-size: .82rem; }
 .eq .katex-display { margin: 0; }
 
-.spec h3 { margin-bottom: 18px; }
-.spec-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 34px; margin: 0; }
-.spec-grid div { display: grid; grid-template-columns: 150px 1fr; gap: 14px; padding: 12px 0; border-bottom: 1px dashed rgba(255, 255, 255, 0.08); }
-.spec-grid dt { font: 600 .74rem/1.6 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
-.spec-grid dd { margin: 0; font-size: .93rem; color: var(--text); }
-
 /* ---------- videos ---------- */
 .subhead { margin: 64px 0 20px; max-width: 900px; }
 .subhead:first-of-type { margin-top: 0; }
@@ -961,8 +955,6 @@ table.results { width: 100%; border-collapse: collapse; font-size: .9rem; font-v
   .expert-panel-head { grid-template-columns: 1fr; gap: 8px; }
   .expert-layout { --cs: clamp(7px, 2.9vw, 16px); --cg: 3px; justify-content: flex-start; gap: 16px 22px; }
   .components { grid-template-columns: 1fr; }
-  .spec-grid { grid-template-columns: 1fr; }
-  .spec-grid div { grid-template-columns: 120px 1fr; }
   .compare-foot, .sota-foot { flex-direction: column; align-items: flex-start; }
   .compare-stage { grid-template-columns: 1fr; gap: 10px; }
   .sota-grid { grid-template-columns: 1fr 1fr; }

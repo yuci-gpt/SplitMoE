@@ -286,22 +286,6 @@
             <div class="eq">\[\mathcal{L}=\mathcal{L}_{\rm flow}+\lambda_{\rm align}\,\mathcal{L}_{\rm align}+\lambda_{\rm anchor}\,\mathcal{L}_{\rm anchor}\]</div>
           </article>
         </div>
-
-        <div class="card spec reveal">
-          <h3>At a glance</h3>
-          <dl class="spec-grid">
-            <div><dt>Backbone</dt><dd>Wan2.2 low-noise checkpoint, upcycled</dd></div>
-            <div><dt>MoE layers</dt><dd>FFNs of the even-numbered layers from 15 to 35</dd></div>
-            <div><dt>Experts per layer</dt><dd>1 shared + 100 routed (<span class="c-sem">20 semantic</span> + <span class="c-gen">80 generic</span>)</dd></div>
-            <div><dt>Routing</dt><dd>Top-8 = <span class="c-sem">2 semantic</span> + <span class="c-gen">6 generic</span></dd></div>
-            <div><dt>Expert width</dt><dd>1536 routed · 3072 shared</dd></div>
-            <div><dt>Parameters</dt><dd>27B total · 14B activated</dd></div>
-            <div><dt>Initialization</dt><dd>Shared ← top-ℓ2 neurons · semantic ← K-Means · generic ← residual pool + noise</dd></div>
-            <div><dt>Training</dt><dd>80k steps · AdamW, lr 5e-5 · bf16 · 64 H100 GPUs</dd></div>
-            <div><dt>Prototype guidance</dt><dd>τ<sub>p</sub> = τ<sub>c</sub> = 0.2 · token bank 16,384 · 128 sampled</dd></div>
-            <div><dt>Balancing (generic)</dt><dd>bias speed γ = 1e-3 · clipped to [−0.1, 0.1]</dd></div>
-          </dl>
-        </div>
       </div>
     </section>
 
