@@ -191,47 +191,6 @@
           <p class="lead">Load balancing, inherited from language MoEs, asks every expert to receive an equal share of tokens. That suits discrete, high-entropy text. Video tokens are different — densely correlated, spatially continuous and dominated by redundant background — so uniform routing splits one object across many experts while background patches crowd several others.</p>
         </div>
 
-        <div class="card sim reveal" id="routingSim">
-          <div class="sim-toolbar">
-            <div class="seg" data-group="mode">
-              <button type="button" class="active" data-value="standard">Standard MoE</button>
-              <button type="button" data-value="split">SplitMoE</button>
-            </div>
-            <div class="seg seg-branch" data-group="branch">
-              <button type="button" class="active" data-value="sem">Semantic experts</button>
-              <button type="button" data-value="gen">Generic experts</button>
-            </div>
-            <div class="seg seg-scene" data-group="scene">
-              <button type="button" class="active" data-value="horse">Horse</button>
-              <button type="button" data-value="chameleon">Chameleon</button>
-              <button type="button" data-value="dog">Dog</button>
-            </div>
-          </div>
-          <div class="sim-body">
-            <div class="sim-view">
-              <canvas id="simCanvas" width="1152" height="576" aria-label="Top-1 expert assignment per patch"></canvas>
-              <span class="sim-badge" id="simBadge">Top-1 expert per patch</span>
-              <label class="sim-opacity">overlay <input type="range" id="simOpacity" min="0" max="100" value="68"></label>
-            </div>
-            <aside class="sim-side">
-              <div class="sim-metric">
-                <div class="sim-metric-top"><span>Intra-region routing dominance</span><strong id="simDom">–</strong></div>
-                <div class="meter"><i id="simDomBar"></i></div>
-              </div>
-              <div class="sim-metric">
-                <div class="sim-metric-top"><span>Patches switching expert / frame</span><strong id="simJit">–</strong></div>
-                <div class="meter meter-warn"><i id="simJitBar"></i></div>
-              </div>
-              <div class="sim-hist">
-                <div class="sim-metric-top"><span id="simHistLabel">Expert load</span></div>
-                <canvas id="simHist" width="640" height="220"></canvas>
-              </div>
-              <p class="sim-note" id="simNote"></p>
-            </aside>
-          </div>
-          <p class="disclaimer">Illustrative simulation on a SplitMoE-generated frame. Colours mark each patch's top-1 expert; region maps come from simple colour clustering, not from the model. Real routing logs are shown in Fig. 5 below.</p>
-        </div>
-
         <figure class="card figure reveal">
           <div class="sheet"><img src="static/images/motivation.webp" alt="Self-similarity of text and visual tokens, semantic distinctiveness and routing dominance per semantic class" loading="lazy" data-zoom></div>
           <figcaption><b>Evidence from routing logs.</b> (a) Visual tokens are far more self-similar than text tokens. (b) <i>Semantic distinctiveness</i> — are different semantic classes sent to different experts? (c) <i>Intra-sample routing dominance</i> — are tokens of one region sent to the same expert? Statistics from 250 generated videos with SegFormer labels: SplitMoE's semantic experts beat the standard MoE (Wan-MoE) on routing dominance for every class and on distinctiveness for most.</figcaption>
@@ -328,28 +287,6 @@
           </article>
         </div>
 
-        <div class="card pushpull reveal" id="pushPull">
-          <div class="pp-text">
-            <span class="eyebrow eyebrow-sm">Interactive</span>
-            <h3>Push and pull, live</h3>
-            <p>Twelve prototypes adapt to a long-tailed feature cloud: one dominant “background” mode plus six small concepts. Switch the forces and watch the failure modes described in the paper appear. Click the canvas to drop in a new concept.</p>
-            <div class="seg seg-pp" data-group="pp">
-              <button type="button" data-value="pull"><i class="mk mk-pull"></i>Pull only</button>
-              <button type="button" data-value="push"><i class="mk mk-push"></i>Push only</button>
-              <button type="button" class="active" data-value="both"><i class="mk mk-both"></i>Pull + Push</button>
-            </div>
-            <div class="pp-stats">
-              <div><span>Minor concepts covered</span><strong id="ppConcepts">–</strong></div>
-              <div><span>Feature coverage</span><strong id="ppCov">–</strong></div>
-              <div><span>Dead prototypes</span><strong id="ppDead">–</strong></div>
-            </div>
-            <p class="pp-explain" id="ppExplain"></p>
-            <button class="btn btn-ghost btn-sm" id="ppReset" type="button">↻ Re-initialise</button>
-            <p class="disclaimer">A 2-D toy with the same three terms (soft pull, bank coverage, margin push). Compare with the real prototype layout in Fig. 6(c).</p>
-          </div>
-          <div class="pp-view"><canvas id="ppCanvas" aria-label="Prototype simulation"></canvas></div>
-        </div>
-
         <div class="card spec reveal">
           <h3>At a glance</h3>
           <dl class="spec-grid">
@@ -378,21 +315,23 @@
 
         <div class="subhead reveal">
           <h3>SplitMoE vs. standard MoE</h3>
-          <p>Same Wan2.2 backbone, same data, same 80k steps, same 14B activated parameters — the only change is how tokens are routed. Drag the divider.</p>
+          <p>Same Wan2.2 backbone, same data, same 80k steps, same 14B activated parameters — the only change is how tokens are routed.</p>
         </div>
         <div class="card compare reveal" id="compare">
           <div class="compare-stage" id="compareStage">
-            <video class="cmp-base" muted loop playsinline preload="none"></video>
-            <video class="cmp-ours" muted loop playsinline preload="none"></video>
-            <div class="cmp-handle" aria-hidden="true"><span></span></div>
-            <span class="cmp-label left">Wan2.2-MoE · standard MoE</span>
-            <span class="cmp-label right">SplitMoE (Ours)</span>
+            <figure class="cmp-cell">
+              <video class="cmp-base" muted loop playsinline preload="none"></video>
+              <figcaption class="cmp-label">Wan2.2-MoE · standard MoE</figcaption>
+            </figure>
+            <figure class="cmp-cell cmp-cell-ours">
+              <video class="cmp-ours" muted loop playsinline preload="none"></video>
+              <figcaption class="cmp-label">SplitMoE (Ours)</figcaption>
+            </figure>
           </div>
           <div class="compare-foot">
             <p class="compare-prompt" id="comparePrompt"></p>
             <div class="compare-controls">
               <button class="chip-btn" type="button" id="cmpPlay">❚❚ Pause</button>
-              <button class="chip-btn" type="button" id="cmpMode">◧ Side by side</button>
             </div>
           </div>
           <div class="thumb-rail" id="compareRail" role="list"></div>
@@ -433,29 +372,9 @@
           <p class="lead">VBench-2 measures intrinsic faithfulness over five capability dimensions; T2V-CompBench targets compositional generation.</p>
         </div>
 
-        <div class="card tabs reveal" id="quantTabs">
-          <div class="tab-list" role="tablist">
-            <button type="button" class="active" data-tab="main">VBench-2 &amp; T2V-CompBench</button>
-            <button type="button" data-tab="commercial">vs. commercial models</button>
-            <button type="button" data-tab="ablation">Expert &amp; layer ablations</button>
-            <button type="button" data-tab="speed">Efficiency</button>
-          </div>
-          <div class="tab-panel active" data-panel="main">
-            <div class="table-wrap"><table class="results" id="mainTable"></table></div>
-            <p class="table-note"><b>Bold</b> = best, <u>underline</u> = second best over all rows. A14B = MoE with 14B activated parameters. VBench-2 scores of LongCat-Video and HunyuanVideo follow the LongCat-Video paper; T2V-CompBench scores of CogVideoX-1.5 and Mochi follow the T2V-CompBench benchmark.</p>
-          </div>
-          <div class="tab-panel" data-panel="commercial">
-            <div class="table-wrap"><table class="results" id="commercialTable"></table></div>
-            <p class="table-note">VBench-2.0. Commercial systems benefit from far larger data, proprietary post-training and aesthetic fine-tuning, so the comparison is inherently asymmetric; SplitMoE is still competitive on Controllability and Physics.</p>
-          </div>
-          <div class="tab-panel" data-panel="ablation">
-            <div class="table-wrap"><table class="results" id="ablationTable"></table></div>
-            <p class="table-note">VBench-2. The total expert count is fixed at 100 and 10 MoE layers are spread over each range. The default 20S + 80G split is best on four of five dimensions, and the middle-layer placement (15–35) beats early, late and full-depth placement on all five.</p>
-          </div>
-          <div class="tab-panel" data-panel="speed">
-            <div class="table-wrap"><table class="results results-speed" id="speedTable"></table></div>
-            <p class="table-note">Both MoE models add a small per-iteration overhead over the dense model (routing and memory bandwidth); SplitMoE's cost over a standard MoE of the same size is negligible.</p>
-          </div>
+        <div class="card results-card reveal" id="mainResults">
+          <div class="table-wrap"><table class="results" id="mainTable"></table></div>
+          <p class="table-note"><b>Bold</b> = best, <u>underline</u> = second best over all rows. A14B = MoE with 14B activated parameters. VBench-2 scores of LongCat-Video and HunyuanVideo follow the LongCat-Video paper; T2V-CompBench scores of CogVideoX-1.5 and Mochi follow the T2V-CompBench benchmark.</p>
         </div>
 
         <div class="chart-grid">
@@ -474,20 +393,15 @@
             <div class="chart-legend"><span><i class="lg-dot lg-base"></i><em id="dumbbellBaseName">Wan2.2-MoE</em></span><span><i class="lg-dot lg-ours"></i>Full SplitMoE</span></div>
           </div>
 
-          <div class="card chart-card reveal" id="userStudyCard">
+          <div class="card chart-card reveal" id="speedCard">
             <div class="chart-head">
               <div>
-                <h3>User study</h3>
-                <p>90 VBench-2.0 prompts × 7 baselines, 65 participants, Good/Same/Bad.</p>
-              </div>
-              <div class="seg seg-sm" data-group="us">
-                <button type="button" class="active" data-value="alignment">Text–video alignment</button>
-                <button type="button" data-value="quality">Visual quality</button>
+                <h3>Efficiency</h3>
+                <p>Parameters and per-iteration speed at the same 14B activated budget.</p>
               </div>
             </div>
-            <div class="us-chart" id="userStudy"></div>
-            <div class="chart-legend" id="usLegend"></div>
-            <p class="chart-foot">SplitMoE wins text–video alignment against every baseline. Wan2.2, with dedicated aesthetic fine-tuning, keeps a marginal edge in visual quality. Bar lengths are read from the paper's figure.</p>
+            <div class="table-wrap"><table class="results results-speed" id="speedTable"></table></div>
+            <p class="chart-foot">Both MoE models add a small per-iteration overhead over the dense model (routing and memory bandwidth); SplitMoE's cost over a standard MoE of the same size is negligible.</p>
           </div>
         </div>
       </div>

@@ -216,8 +216,8 @@
     if (!stage || !items.length) return;
     const vb = $(".cmp-base", stage), vo = $(".cmp-ours", stage);
     const rail = $("#compareRail"), promptEl = $("#comparePrompt");
-    const playBtn = $("#cmpPlay"), modeBtn = $("#cmpMode");
-    let idx = -1, paused = reduceMotion, inView = false, introduced = false;
+    const playBtn = $("#cmpPlay");
+    let idx = -1, paused = reduceMotion, inView = false;
 
     const thumbs = items.map((it, i) => {
       const b = document.createElement("button");
@@ -255,31 +255,6 @@
       if (Math.abs(vo.currentTime - vb.currentTime) > 0.1) vo.currentTime = vb.currentTime;
     }, 600);
 
-    let dragging = false, pos = 50;
-    const setPos = (p) => {
-      pos = Math.min(98, Math.max(2, p));
-      stage.style.setProperty("--pos", `${pos}%`);
-      stage.setAttribute("aria-valuenow", String(Math.round(pos)));
-    };
-    const fromClient = (x) => { const r = stage.getBoundingClientRect(); setPos(((x - r.left) / r.width) * 100); };
-    stage.setAttribute("tabindex", "0");
-    stage.setAttribute("role", "slider");
-    stage.setAttribute("aria-label", "Comparison divider: standard MoE on the left, SplitMoE on the right");
-    stage.setAttribute("aria-valuemin", "0");
-    stage.setAttribute("aria-valuemax", "100");
-    stage.addEventListener("pointerdown", (e) => {
-      if (stage.classList.contains("sbs")) return;
-      dragging = true;
-      stage.setPointerCapture(e.pointerId);
-      fromClient(e.clientX);
-    });
-    stage.addEventListener("pointermove", (e) => { if (dragging) fromClient(e.clientX); });
-    ["pointerup", "pointercancel", "lostpointercapture"].forEach((ev) => stage.addEventListener(ev, () => (dragging = false)));
-    stage.addEventListener("keydown", (e) => {
-      if (e.key === "ArrowLeft") { setPos(pos - 5); e.preventDefault(); }
-      if (e.key === "ArrowRight") { setPos(pos + 5); e.preventDefault(); }
-    });
-
     const setPlayLabel = () => (playBtn.textContent = paused ? "▶ Play" : "❚❚ Pause");
     setPlayLabel();
     playBtn.addEventListener("click", () => {
@@ -287,11 +262,6 @@
       if (paused) { vb.pause(); vo.pause(); } else playBoth();
       setPlayLabel();
     });
-    modeBtn.addEventListener("click", () => {
-      const sbs = stage.classList.toggle("sbs");
-      modeBtn.textContent = sbs ? "⇆ Slider" : "◧ Side by side";
-    });
-
     nearView(stage, () => {
       thumbs.forEach((t) => (t.style.backgroundImage = `url("${t.dataset.bg}")`));
       select(0);
@@ -300,16 +270,6 @@
       new IntersectionObserver((es) => {
         inView = es[0].isIntersecting;
         if (inView && !paused) playBoth(); else { vb.pause(); vo.pause(); }
-        if (inView && !introduced && !reduceMotion) {
-          introduced = true;
-          const t0 = performance.now();
-          const run = (now) => {
-            const t = Math.min(1, (now - t0) / 1300);
-            setPos(82 - 32 * (1 - Math.pow(1 - t, 3)));
-            if (t < 1 && !dragging) requestAnimationFrame(run);
-          };
-          requestAnimationFrame(run);
-        }
       }, { threshold: 0.25 }).observe(stage);
     } else { select(0); }
   }
@@ -422,16 +382,6 @@
     });
   }
 
-  function initTabs() {
-    $$(".tabs").forEach((tabs) => {
-      const btns = $$(".tab-list button", tabs), panels = $$(".tab-panel", tabs);
-      btns.forEach((b) => b.addEventListener("click", () => {
-        btns.forEach((x) => x.classList.toggle("active", x === b));
-        panels.forEach((p) => p.classList.toggle("active", p.dataset.panel === b.dataset.tab));
-      }));
-    });
-  }
-
   function initBib() {
     const btn = $("#copyBib"), code = $("#bibCode");
     if (!btn || !code) return;
@@ -484,7 +434,6 @@
     initGallery();
     initZoom();
     initPathology();
-    initTabs();
     initBib();
     initSoon();
     window.__renderMath();

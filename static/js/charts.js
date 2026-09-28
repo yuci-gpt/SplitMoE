@@ -98,24 +98,6 @@
         oursMatch: (r) => /Ours/.test(r.name),
       });
     }
-    const com = document.getElementById("commercialTable");
-    if (com) {
-      renderResultTable(com, {
-        groups: [{ group: "", rows: T.commercial.map((r) => ({ ...r, params: "" })) }],
-        metrics: T.metrics5,
-        extraCols: ["Model"],
-        oursMatch: (r) => /Ours/.test(r.name),
-      });
-    }
-    const abl = document.getElementById("ablationTable");
-    if (abl) {
-      renderResultTable(abl, {
-        groups: T.ablation,
-        metrics: T.metrics5,
-        extraCols: ["Experts", "Layer placement"],
-        oursMatch: (r) => /Ours/.test(r.name),
-      });
-    }
     const sp = document.getElementById("speedTable");
     if (sp) {
       const s = T.speed;
@@ -215,61 +197,6 @@
     onReveal(svg, () => go(candidates[+select.value]));
   }
 
-  /* ----------------------------------------------------------- user study */
-  function initUserStudy() {
-    const host = document.getElementById("userStudy");
-    const legend = document.getElementById("usLegend");
-    const card = document.getElementById("userStudyCard");
-    if (!host) return;
-    const us = DATA.userStudy;
-    const COLORS = ["linear-gradient(90deg,#2ee6c5,#38bdf8)", "#5b6477", "#b7a9ea", "#e58a98"];
-    const INK = ["#04131a", "#f1f3f9", "#1a1433", "#2a0b12"];
-    legend.innerHTML = us.categories.map((c, i) => `<span><i class="lg-sq" style="background:${COLORS[i]}"></i>${c}</span>`).join("");
-    const segs = us.models.map((name) => {
-      const row = document.createElement("div");
-      row.className = "us-row";
-      row.innerHTML = `<span class="us-name">${name}</span><div class="us-bar"></div>`;
-      const bar = row.querySelector(".us-bar");
-      const s = us.categories.map((cat, i) => {
-        const seg = document.createElement("span");
-        seg.className = "us-seg";
-        seg.style.background = COLORS[i];
-        seg.innerHTML = `<b style="color:${INK[i]}"></b>`;
-        bar.appendChild(seg);
-        return seg;
-      });
-      host.appendChild(row);
-      return { name, s };
-    });
-    const axis = document.createElement("div");
-    axis.className = "us-axis";
-    axis.innerHTML = `<span></span><div><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div>`;
-    host.appendChild(axis);
-
-    let crit = "alignment";
-    function apply() {
-      us.models.forEach((_, r) => {
-        us[crit][r].forEach((v, i) => {
-          const seg = segs[r].s[i];
-          seg.style.width = `${v}%`;
-          seg.querySelector("b").textContent = v >= 9 ? `${Math.round(v)}%` : "";
-          seg.onmousemove = (e) => showTip(`${us.models[r]} · ${us.categories[i]}: ≈${Math.round(v)}%`, e.clientX, e.clientY);
-          seg.onmouseleave = hideTip;
-        });
-      });
-      host.classList.add("shown");
-    }
-    const seg = card.querySelector('.seg[data-group="us"]');
-    seg.addEventListener("click", (e) => {
-      const b = e.target.closest("button");
-      if (!b || b.classList.contains("active")) return;
-      seg.querySelectorAll("button").forEach((x) => x.classList.toggle("active", x === b));
-      crit = b.dataset.value;
-      apply();
-    });
-    onReveal(host, apply);
-  }
-
   /* ----------------------------------------------------- timestep routing */
   function initTimestep() {
     const svg = document.getElementById("timestepChart");
@@ -345,7 +272,6 @@
   function boot() {
     initTables();
     initDumbbell();
-    initUserStudy();
     initTimestep();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
