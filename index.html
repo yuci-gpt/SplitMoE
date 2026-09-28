@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SplitMoE · Breaking the Uniformity Trap — NeurIPS 2026 Spotlight</title>
+  <meta name="description" content="SplitMoE scales video diffusion models with a split-role Mixture-of-Experts: semantic experts guided by VAE-space prototypes plus generic experts for residual detail. 27B total / 14B activated parameters. NeurIPS 2026 Spotlight.">
+  <meta name="theme-color" content="#05060b">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Breaking the Uniformity Trap: Scaling Video Diffusion Model via SplitMoE">
+  <meta property="og:description" content="A split-role MoE for video diffusion — semantic experts + generic experts, prototype-guided routing and push–pull regularization. NeurIPS 2026 Spotlight.">
+  <meta property="og:url" content="https://yuci-gpt.github.io/SplitMoE/">
+  <meta property="og:image" content="https://yuci-gpt.github.io/SplitMoE/static/images/og.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2305060b'/%3E%3Crect x='6' y='6' width='9' height='20' rx='2.5' fill='%232ee6c5'/%3E%3Crect x='17' y='6' width='9' height='9' rx='2.5' fill='%23ffb547'/%3E%3Crect x='17' y='17' width='9' height='9' rx='2.5' fill='%23ff7a59'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <link rel="stylesheet" href="static/css/style.css">
+  <script>document.documentElement.classList.add('js');</script>
+</head>
+<body>
+  <div class="bg-aurora" aria-hidden="true"><span></span><span></span><span></span></div>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="cursor-glow" aria-hidden="true"></div>
+  <div class="scroll-progress" aria-hidden="true"><i></i></div>
+
+  <!-- ============================== NAV ============================== -->
+  <nav class="nav" id="nav">
+    <a class="nav-brand" href="#top" aria-label="SplitMoE home">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="3" width="11" height="26" rx="3" fill="#2ee6c5"/><rect x="18" y="3" width="11" height="11" rx="3" fill="#ffb547"/><rect x="18" y="18" width="11" height="11" rx="3" fill="#ff7a59"/></svg>
+      <span><span class="s">Split</span><span class="m">MoE</span></span>
+    </a>
+    <div class="nav-links" id="navLinks">
+      <a href="#overview">Overview</a>
+      <a href="#trap">Uniformity Trap</a>
+      <a href="#method">Method</a>
+      <a href="#results">Videos</a>
+      <a href="#quant">Results</a>
+      <a href="#analysis">Analysis</a>
+      <a href="#bibtex">BibTeX</a>
+    </div>
+    <span class="nav-chip"><i></i>NeurIPS 2026 · Spotlight</span>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false"><span></span><span></span></button>
+  </nav>
+
+  <!-- ============================== HERO ============================== -->
+  <header class="hero" id="top">
+    <canvas class="hero-canvas" id="heroCanvas" aria-hidden="true"></canvas>
+    <div class="hero-shade" aria-hidden="true"></div>
+
+    <div class="hero-content">
+      <h1 class="hero-title">
+        <span class="t1">Breaking the <span class="glitch" data-text="Uniformity">Uniformity</span> Trap</span>
+        <span class="t2">Scaling Video Diffusion Model via <span class="splitmoe"><span class="s">Split</span><span class="m">MoE</span></span></span>
+      </h1>
+
+      <div class="hero-badges">
+        <span class="pill pill-venue">NeurIPS 2026</span>
+        <span class="pill pill-spotlight"><span class="spark">✦</span>Spotlight</span>
+      </div>
+
+      <ul class="authors">
+        <li>Yu Xu<sup>1,2</sup></li>
+        <li class="corr">Yuxin Zhang<sup>2<span class="env" title="Corresponding author">✉</span></sup></li>
+        <li>Xiao Yang<sup>3</sup></li>
+        <li>Haotian Yang<sup>2</sup></li>
+        <li>Yizhi Wang<sup>2</sup></li>
+        <li>Xinwei Huang<sup>2</sup></li>
+        <li>Minxuan Lin<sup>2</sup></li>
+        <li>Angtian Wang<sup>2</sup></li>
+        <li>Chongyang Ma<sup>2</sup></li>
+        <li>Fan Tang<sup>4</sup></li>
+      </ul>
+      <ul class="affiliations">
+        <li><sup>1</sup>University of Chinese Academy of Sciences</li>
+        <li><sup>2</sup>ByteDance</li>
+        <li><sup>3</sup>Canva Research</li>
+        <li><sup>4</sup>University of Science and Technology Beijing</li>
+      </ul>
+      <p class="corresponding"><span class="env">✉</span> Corresponding author</p>
+
+      <div class="hero-cta">
+        <a class="btn" href="#" data-soon aria-disabled="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>Paper
+        </a>
+        <a class="btn" href="#" data-soon aria-disabled="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>arXiv
+        </a>
+        <a class="btn btn-primary" href="#results">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.52.85l10.4-6.5a1 1 0 0 0 0-1.7L9.52 4.65A1 1 0 0 0 8 5.5z"/></svg>Video Results
+        </a>
+        <a class="btn" href="#bibtex">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H6a2 2 0 0 0-2 2v4a2 2 0 0 1-2 2 2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h2M16 3h2a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2 2 2 0 0 0-2 2v4a2 2 0 0 1-2 2h-2"/></svg>BibTeX
+        </a>
+      </div>
+    </div>
+
+    <div class="hero-status" aria-live="polite">
+      <span class="dot" id="heroDot"></span><span id="heroStatus">Standard MoE · uniform load balancing</span>
+    </div>
+    <button class="hero-replay" id="heroReplay" type="button">↻ Replay: uniform → split</button>
+    <a class="scroll-cue" href="#showreel" aria-label="Scroll down"><span></span></a>
+  </header>
+
+  <!-- ============================== SHOWREEL ============================== -->
+  <section class="showreel" id="showreel" aria-label="Videos generated by SplitMoE">
+    <div class="container reel-head">
+      <span class="eyebrow">Generated by SplitMoE</span>
+      <h2 class="reel-title">One sparse model. <span class="grad">Coherent motion.</span></h2>
+    </div>
+    <div class="reel-stage">
+      <div class="reel-tilt">
+        <div class="reel-row"><div class="reel-track" id="reelTrack1"></div></div>
+        <div class="reel-row reverse"><div class="reel-track" id="reelTrack2"></div></div>
+      </div>
+    </div>
+    <p class="container reel-note">Hover a clip to pause the reel and read its prompt · all clips come from the 27B-total / 14B-activated SplitMoE model</p>
+  </section>
+
+  <main>
+    <!-- ============================== OVERVIEW ============================== -->
+    <section class="section" id="overview">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">01 · Overview</span>
+          <h2>TL;DR</h2>
+        </div>
+
+        <p class="tldr reveal">
+          Language-style MoE routes every token independently and pushes expert usage toward uniformity — a poor fit for video, whose tokens are
+          <em>spatiotemporally redundant</em> and <em>semantically long-tailed</em>. <strong>SplitMoE</strong> splits the expert pool into
+          <span class="hl-sem">semantic experts</span>, steered by prototypes anchored in clean VAE features, and
+          <span class="hl-gen">generic experts</span> that keep flexible capacity for residual detail. Same 14B activated parameters as the dense model — better videos.
+        </p>
+
+        <div class="stats reveal">
+          <div class="stat spot">
+            <div class="stat-num"><span data-count="27">27</span><small>B</small></div>
+            <div class="stat-label">total parameters<span>upcycled from Wan2.2</span></div>
+          </div>
+          <div class="stat spot">
+            <div class="stat-num"><span data-count="14">14</span><small>B</small></div>
+            <div class="stat-label">activated per token<span>same as the dense model</span></div>
+          </div>
+          <div class="stat spot">
+            <div class="stat-num"><span class="c-sem" data-count="20">20</span><small>+</small><span class="c-gen" data-count="80">80</span></div>
+            <div class="stat-label">semantic + generic experts<span>plus 1 shared expert per MoE layer</span></div>
+          </div>
+          <div class="stat spot">
+            <div class="stat-num"><span data-count="8">8</span><small>/8</small></div>
+            <div class="stat-label">benchmark dimensions improved<span>over standard MoE at equal budget</span></div>
+          </div>
+          <div class="stat spot">
+            <div class="stat-num"><small>~</small><span data-count="70">70</span><small>%</small></div>
+            <div class="stat-label">of the training steps<span>to reach the dense model's loss</span></div>
+          </div>
+        </div>
+
+        <article class="card abstract reveal spot">
+          <h3>Abstract</h3>
+          <p>
+            Mixture-of-Experts (MoE), popularized by large language models, is a promising paradigm for scaling visual generative models.
+            However, conventional token-wise MoE routes tokens independently within a homogeneous expert pool and regularizes expert usage toward uniformity,
+            making it poorly matched to video data that is spatiotemporally redundant and semantically long-tailed.
+            We show that existing visual MoEs fall into a <b>uniformity trap</b>: semantically under-organized routing, compounded by uniform expert-usage regularization,
+            scatters coherent patches across disparate experts, causing routing fragmentation and structural distortion.
+            To address this, we propose <b>SplitMoE</b>, a split-role sparse architecture that breaks the shackles of uniformity.
+            To accommodate the inherent semantic imbalance, we explicitly bifurcate the expert pool into <span class="hl-sem">semantic experts</span> and
+            <span class="hl-gen">generic experts</span>, with semantic experts capturing high-level semantic abstraction and generic experts preserving residual visual information and flexible generative capacity.
+            Leveraging prototype-guided routing and push-pull regularization, SplitMoE enables tokens to cluster naturally by semantic attributes rather than arbitrary balancing constraints.
+            Extensive results show that under an equivalent activated-parameter budget, SplitMoE outperforms traditional load-balanced MoEs in convergence speed, routing coherence,
+            and video generation quality across standard benchmarks. By revealing an emergent coarse-to-fine denoising logic, SplitMoE provides the community with a modality-aware scaling path,
+            serving as a critical reference for building large-scale video world models.
+          </p>
+        </article>
+
+        <figure class="card figure reveal">
+          <div class="sheet"><img src="static/images/concept.webp" alt="Standard MoE scatters patches of one object across experts; SplitMoE routes them to semantic expert groups and residual patches to generic experts" loading="lazy" data-zoom></div>
+          <figcaption><b>The idea in one picture.</b> Standard MoE scatters patches of the same object across unrelated experts — <i>spatiotemporal fragmentation</i>. SplitMoE sends them to semantic expert groups under prototype guidance, while generic experts absorb residual appearance — <i>semantic-aligned routing</i>.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============================== UNIFORMITY TRAP ============================== -->
+    <section class="section" id="trap">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">02 · Motivation</span>
+          <h2>The <span class="grad">Uniformity Trap</span></h2>
+          <p class="lead">Load balancing, inherited from language MoEs, asks every expert to receive an equal share of tokens. That suits discrete, high-entropy text. Video tokens are different — densely correlated, spatially continuous and dominated by redundant background — so uniform routing splits one object across many experts while background patches crowd several others.</p>
+        </div>
+
+        <div class="card sim reveal" id="routingSim">
+          <div class="sim-toolbar">
+            <div class="seg" data-group="mode">
+              <button type="button" class="active" data-value="standard">Standard MoE</button>
+              <button type="button" data-value="split">SplitMoE</button>
+            </div>
+            <div class="seg seg-branch" data-group="branch">
+              <button type="button" class="active" data-value="sem">Semantic experts</button>
+              <button type="button" data-value="gen">Generic experts</button>
+            </div>
+            <div class="seg seg-scene" data-group="scene">
+              <button type="button" class="active" data-value="horse">Horse</button>
+              <button type="button" data-value="chameleon">Chameleon</button>
+              <button type="button" data-value="dog">Dog</button>
+            </div>
+          </div>
+          <div class="sim-body">
+            <div class="sim-view">
+              <canvas id="simCanvas" width="1152" height="576" aria-label="Top-1 expert assignment per patch"></canvas>
+              <span class="sim-badge" id="simBadge">Top-1 expert per patch</span>
+              <label class="sim-opacity">overlay <input type="range" id="simOpacity" min="0" max="100" value="68"></label>
+            </div>
+            <aside class="sim-side">
+              <div class="sim-metric">
+                <div class="sim-metric-top"><span>Intra-region routing dominance</span><strong id="simDom">–</strong></div>
+                <div class="meter"><i id="simDomBar"></i></div>
+              </div>
+              <div class="sim-metric">
+                <div class="sim-metric-top"><span>Patches switching expert / frame</span><strong id="simJit">–</strong></div>
+                <div class="meter meter-warn"><i id="simJitBar"></i></div>
+              </div>
+              <div class="sim-hist">
+                <div class="sim-metric-top"><span id="simHistLabel">Expert load</span></div>
+                <canvas id="simHist" width="640" height="220"></canvas>
+              </div>
+              <p class="sim-note" id="simNote"></p>
+            </aside>
+          </div>
+          <p class="disclaimer">Illustrative simulation on a SplitMoE-generated frame. Colours mark each patch's top-1 expert; region maps come from simple colour clustering, not from the model. Real routing logs are shown in Fig. 5 below.</p>
+        </div>
+
+        <figure class="card figure reveal">
+          <div class="sheet"><img src="static/images/motivation.webp" alt="Self-similarity of text and visual tokens, semantic distinctiveness and routing dominance per semantic class" loading="lazy" data-zoom></div>
+          <figcaption><b>Evidence from routing logs.</b> (a) Visual tokens are far more self-similar than text tokens. (b) <i>Semantic distinctiveness</i> — are different semantic classes sent to different experts? (c) <i>Intra-sample routing dominance</i> — are tokens of one region sent to the same expert? Statistics from 250 generated videos with SegFormer labels: SplitMoE's semantic experts beat the standard MoE (Wan-MoE) on routing dominance for every class and on distinctiveness for most.</figcaption>
+        </figure>
+
+        <div class="card pathology reveal">
+          <div class="pathology-head">
+            <div>
+              <h3>What uniform routing looks like in practice</h3>
+              <p>Top-1 expert maps across frames for the prompt <i>“A horse is standing on grass in front of a barn.”</i></p>
+            </div>
+            <div class="seg" data-group="routing">
+              <button type="button" class="active" data-value="baseline">Baseline MoE</button>
+              <button type="button" data-value="ours">SplitMoE</button>
+            </div>
+          </div>
+          <div class="pathology-stage" id="pathologyStage">
+            <img class="is-active" data-key="baseline" src="static/images/routing_baseline.webp" alt="Baseline MoE routing maps: fragmented, striped and jittering assignments" loading="lazy" data-zoom>
+            <img data-key="ours" src="static/images/routing_ours.webp" alt="SplitMoE routing maps: coherent semantic regions and textured generic assignments" loading="lazy" data-zoom>
+          </div>
+          <div class="pathology-cards">
+            <div class="p-card"><span class="p-num">i</span><h4>Temporal jitter</h4><p>Similar regions switch experts from frame to frame.</p></div>
+            <div class="p-card"><span class="p-num">ii</span><h4>Spatial striping</h4><p>Homogeneous areas are artificially split to satisfy load constraints.</p></div>
+            <div class="p-card"><span class="p-num">iii</span><h4>Semantic fragmentation</h4><p>Adjacent tokens of one object scatter across unrelated experts.</p></div>
+          </div>
+          <p class="pathology-caption" id="pathologyCaption">Baseline MoE scatters correlated patches across experts under strict capacity constraints, causing fragmented routing and poor spatiotemporal consistency.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== METHOD ============================== -->
+    <section class="section" id="method">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">03 · Method</span>
+          <h2>Split-role experts, <span class="grad">guided by prototypes</span></h2>
+          <p class="lead">SplitMoE upcycles a dense video DiT into a sparse one whose MoE layers have two branches with two jobs: a semantic branch that groups tokens by what they depict, and a generic branch that keeps flexible capacity for everything else.</p>
+        </div>
+
+        <figure class="card figure figure-wide reveal">
+          <div class="sheet"><img src="static/images/pipeline.webp" alt="SplitMoE pipeline: semantic MoE and generic MoE branches, semantic prototype guidance from clean VAE features, prototype learning with pull and push" loading="lazy" data-zoom></div>
+          <figcaption><b>Pipeline.</b> Each video MoE layer is split into a semantic and a generic MoE branch. Soft targets induced by VAE-space prototypes guide semantic routing, while the generic branch preserves flexible residual modelling. Learnable prototypes are optimized in the VAE feature space with pull–push regularization and a global token bank.</figcaption>
+        </figure>
+
+        <div class="card expert-panel reveal" id="expertPanel">
+          <div class="expert-panel-head">
+            <h3>One MoE layer, one token</h3>
+            <p>Each token activates <b class="c-sem">2 semantic</b> + <b class="c-gen">6 generic</b> experts plus the always-on shared expert — exactly the Top-8 budget of the standard MoE baseline, so gains come from role-aware allocation, not extra compute.</p>
+          </div>
+          <div class="expert-layout">
+            <div class="expert-group shared-group">
+              <span class="eg-label">Shared ×1</span>
+              <div class="expert-cells" id="cellsShared"></div>
+            </div>
+            <div class="expert-group sem-group">
+              <span class="eg-label">Semantic ×20 <em>Top-2</em></span>
+              <div class="expert-cells" id="cellsSem"></div>
+            </div>
+            <div class="expert-group gen-group">
+              <span class="eg-label">Generic ×80 <em>Top-6</em></span>
+              <div class="expert-cells" id="cellsGen"></div>
+            </div>
+          </div>
+          <div class="expert-foot">
+            <span><b>8 × 1536 + 3072 = 15,360</b> active FFN width per token</span>
+            <span>vs. <b>13,824</b> in the dense Wan2.2 FFN</span>
+          </div>
+        </div>
+
+        <div class="components">
+          <article class="card comp reveal spot">
+            <span class="comp-idx">01</span>
+            <h3>Decoupled expert partitioning</h3>
+            <p>The expert pool is split into two disjoint roles: <span class="hl-sem">semantic experts</span> model high-level structure such as objects and layout; <span class="hl-gen">generic experts</span> capture local appearance and generative residuals. A cosine router yields independent sigmoid affinities, so one token can match a semantic and a generic expert at once. Top-\(K\) is taken per group, with \(K = K_s + K_g\).</p>
+            <div class="eq">\[\mathbf{y}=\sum_{e\in\mathcal{I}^{\rm sem}} g^{\rm sem}_{e}\,E_e(\mathbf{x})+\sum_{e\in\mathcal{I}^{\rm gen}} g^{\rm gen}_{e}\,E_e(\mathbf{x})\]</div>
+          </article>
+          <article class="card comp reveal spot">
+            <span class="comp-idx">02</span>
+            <h3>Prototype-guided semantic routing</h3>
+            <p>\(M_s\) learnable prototypes live in the clean-VAE feature space — a cost-free guidance signal with no external encoder. Comparing each token's VAE feature with the prototypes gives a fixed soft target \(\mathbf{q}\); the router, reading the DiT token, is aligned to it. A stop-gradient keeps the router from distorting the prototype topology.</p>
+            <div class="eq">\[\mathcal{L}_{\rm align}=\frac{1}{N}\sum_{i=1}^{N}\operatorname{KL}\!\left(\mathbf{q}_{i}\,\|\,\mathbf{r}_{i}\right)\]</div>
+          </article>
+          <article class="card comp reveal spot">
+            <span class="comp-idx">03</span>
+            <h3>Push–pull prototype learning</h3>
+            <p>Prototypes behave like particles on a hypersphere. <b>Pull</b> attracts them to current features and to a circular bank of recent features, so no prototype drifts into a dead mode. <b>Push</b> repels prototypes whose similarity exceeds a margin \(m\), so they do not collapse onto redundant background regions.</p>
+            <div class="eq eq-small">\[\begin{aligned}\mathcal{L}_{\rm anchor}=\;&\underbrace{-\tfrac{1}{N}\sum_{i}\tau_c\log\sum_{m}e^{\cos(\mathbf{f}_i,\mathbf{p}_m)/\tau_c}+\tfrac{1}{M_s}\sum_{m}\big(1-\max_{\bar{\mathbf{f}}\in\mathcal{B}}\cos(\mathbf{p}_m,\bar{\mathbf{f}})\big)}_{\text{pull}}\\[2pt]&+\underbrace{\tfrac{1}{M_s(M_s-1)}\sum_{j\neq k}\max\!\big(0,\cos(\mathbf{p}_j,\mathbf{p}_k)-m\big)}_{\text{push}}\end{aligned}\]</div>
+          </article>
+          <article class="card comp reveal spot">
+            <span class="comp-idx">04</span>
+            <h3>Group-aware load balancing</h3>
+            <p>Following DeepSeek-V3, only the generic experts use loss-free balancing: non-gradient biases steer the discrete Top-\(K\) choice while mixture weights come from clean scores. Semantic experts get no explicit balancing — they balance adaptively through semantic alignment. No auxiliary loss touches the diffusion gradients.</p>
+            <div class="eq">\[\mathcal{L}=\mathcal{L}_{\rm flow}+\lambda_{\rm align}\,\mathcal{L}_{\rm align}+\lambda_{\rm anchor}\,\mathcal{L}_{\rm anchor}\]</div>
+          </article>
+        </div>
+
+        <div class="card pushpull reveal" id="pushPull">
+          <div class="pp-text">
+            <span class="eyebrow eyebrow-sm">Interactive</span>
+            <h3>Push and pull, live</h3>
+            <p>Twelve prototypes adapt to a long-tailed feature cloud: one dominant “background” mode plus six small concepts. Switch the forces and watch the failure modes described in the paper appear. Click the canvas to drop in a new concept.</p>
+            <div class="seg seg-pp" data-group="pp">
+              <button type="button" data-value="pull"><i class="mk mk-pull"></i>Pull only</button>
+              <button type="button" data-value="push"><i class="mk mk-push"></i>Push only</button>
+              <button type="button" class="active" data-value="both"><i class="mk mk-both"></i>Pull + Push</button>
+            </div>
+            <div class="pp-stats">
+              <div><span>Minor concepts covered</span><strong id="ppConcepts">–</strong></div>
+              <div><span>Feature coverage</span><strong id="ppCov">–</strong></div>
+              <div><span>Dead prototypes</span><strong id="ppDead">–</strong></div>
+            </div>
+            <p class="pp-explain" id="ppExplain"></p>
+            <button class="btn btn-ghost btn-sm" id="ppReset" type="button">↻ Re-initialise</button>
+            <p class="disclaimer">A 2-D toy with the same three terms (soft pull, bank coverage, margin push). Compare with the real prototype layout in Fig. 6(c).</p>
+          </div>
+          <div class="pp-view"><canvas id="ppCanvas" aria-label="Prototype simulation"></canvas></div>
+        </div>
+
+        <div class="card spec reveal">
+          <h3>At a glance</h3>
+          <dl class="spec-grid">
+            <div><dt>Backbone</dt><dd>Wan2.2 low-noise checkpoint, upcycled</dd></div>
+            <div><dt>MoE layers</dt><dd>FFNs of the even-numbered layers from 15 to 35</dd></div>
+            <div><dt>Experts per layer</dt><dd>1 shared + 100 routed (<span class="c-sem">20 semantic</span> + <span class="c-gen">80 generic</span>)</dd></div>
+            <div><dt>Routing</dt><dd>Top-8 = <span class="c-sem">2 semantic</span> + <span class="c-gen">6 generic</span></dd></div>
+            <div><dt>Expert width</dt><dd>1536 routed · 3072 shared</dd></div>
+            <div><dt>Parameters</dt><dd>27B total · 14B activated</dd></div>
+            <div><dt>Initialization</dt><dd>Shared ← top-ℓ2 neurons · semantic ← K-Means · generic ← residual pool + noise</dd></div>
+            <div><dt>Training</dt><dd>80k steps · AdamW, lr 5e-5 · bf16 · 64 H100 GPUs</dd></div>
+            <div><dt>Prototype guidance</dt><dd>τ<sub>p</sub> = τ<sub>c</sub> = 0.2 · token bank 16,384 · 128 sampled</dd></div>
+            <div><dt>Balancing (generic)</dt><dd>bias speed γ = 1e-3 · clipped to [−0.1, 0.1]</dd></div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== VIDEO RESULTS ============================== -->
+    <section class="section" id="results">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">04 · Video results</span>
+          <h2>See the <span class="grad">difference</span></h2>
+        </div>
+
+        <div class="subhead reveal">
+          <h3>SplitMoE vs. standard MoE</h3>
+          <p>Same Wan2.2 backbone, same data, same 80k steps, same 14B activated parameters — the only change is how tokens are routed. Drag the divider.</p>
+        </div>
+        <div class="card compare reveal" id="compare">
+          <div class="compare-stage" id="compareStage">
+            <video class="cmp-base" muted loop playsinline preload="none"></video>
+            <video class="cmp-ours" muted loop playsinline preload="none"></video>
+            <div class="cmp-handle" aria-hidden="true"><span></span></div>
+            <span class="cmp-label left">Wan2.2-MoE · standard MoE</span>
+            <span class="cmp-label right">SplitMoE (Ours)</span>
+          </div>
+          <div class="compare-foot">
+            <p class="compare-prompt" id="comparePrompt"></p>
+            <div class="compare-controls">
+              <button class="chip-btn" type="button" id="cmpPlay">❚❚ Pause</button>
+              <button class="chip-btn" type="button" id="cmpMode">◧ Side by side</button>
+            </div>
+          </div>
+          <div class="thumb-rail" id="compareRail" role="list"></div>
+        </div>
+
+        <div class="subhead reveal">
+          <h3>Comparison with state-of-the-art T2V models</h3>
+          <p>VBench-2 prompts; every model is sampled with its default inference settings.</p>
+        </div>
+        <div class="card sota reveal" id="sota">
+          <div class="sota-tabs" id="sotaTabs" role="tablist"></div>
+          <div class="sota-grid" id="sotaGrid"></div>
+          <div class="sota-foot">
+            <p id="sotaPrompt"></p>
+            <button class="chip-btn" type="button" id="sotaRestart">↺ Restart together</button>
+          </div>
+        </div>
+
+        <figure class="card figure reveal">
+          <div class="sheet"><img src="static/images/qualitative_compare.webp" alt="Frame-level comparison of Wan2.2, LongCat-Video, LTX-2, OmniWeaving, Dense Wan-FT, Wan-MoE and SplitMoE" loading="lazy" data-zoom></div>
+          <figcaption><b>Frame by frame.</b> Watermelon cutting stresses object interaction: baselines show fused hand and fruit geometry (dashed boxes) and OmniWeaving blurs between frames. The stand-to-run horse stresses large motion: baselines grow extra legs. SplitMoE keeps boundaries stable and anatomy intact.</figcaption>
+        </figure>
+
+        <div class="subhead reveal">
+          <h3>More text-to-video results</h3>
+          <p>Long, cinematic prompts. Click any clip to enlarge it.</p>
+        </div>
+        <div class="gallery reveal" id="gallery"></div>
+      </div>
+    </section>
+
+    <!-- ============================== QUANTITATIVE ============================== -->
+    <section class="section" id="quant">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">05 · Quantitative results</span>
+          <h2>Same budget, <span class="grad">better scores</span></h2>
+          <p class="lead">VBench-2 measures intrinsic faithfulness over five capability dimensions; T2V-CompBench targets compositional generation.</p>
+        </div>
+
+        <div class="card tabs reveal" id="quantTabs">
+          <div class="tab-list" role="tablist">
+            <button type="button" class="active" data-tab="main">VBench-2 &amp; T2V-CompBench</button>
+            <button type="button" data-tab="commercial">vs. commercial models</button>
+            <button type="button" data-tab="ablation">Expert &amp; layer ablations</button>
+            <button type="button" data-tab="speed">Efficiency</button>
+          </div>
+          <div class="tab-panel active" data-panel="main">
+            <div class="table-wrap"><table class="results" id="mainTable"></table></div>
+            <p class="table-note"><b>Bold</b> = best, <u>underline</u> = second best over all rows. A14B = MoE with 14B activated parameters. VBench-2 scores of LongCat-Video and HunyuanVideo follow the LongCat-Video paper; T2V-CompBench scores of CogVideoX-1.5 and Mochi follow the T2V-CompBench benchmark.</p>
+          </div>
+          <div class="tab-panel" data-panel="commercial">
+            <div class="table-wrap"><table class="results" id="commercialTable"></table></div>
+            <p class="table-note">VBench-2.0. Commercial systems benefit from far larger data, proprietary post-training and aesthetic fine-tuning, so the comparison is inherently asymmetric; SplitMoE is still competitive on Controllability and Physics.</p>
+          </div>
+          <div class="tab-panel" data-panel="ablation">
+            <div class="table-wrap"><table class="results" id="ablationTable"></table></div>
+            <p class="table-note">VBench-2. The total expert count is fixed at 100 and 10 MoE layers are spread over each range. The default 20S + 80G split is best on four of five dimensions, and the middle-layer placement (15–35) beats early, late and full-depth placement on all five.</p>
+          </div>
+          <div class="tab-panel" data-panel="speed">
+            <div class="table-wrap"><table class="results results-speed" id="speedTable"></table></div>
+            <p class="table-note">Both MoE models add a small per-iteration overhead over the dense model (routing and memory bandwidth); SplitMoE's cost over a standard MoE of the same size is negligible.</p>
+          </div>
+        </div>
+
+        <div class="chart-grid">
+          <div class="card chart-card reveal" id="dumbbellCard">
+            <div class="chart-head">
+              <div>
+                <h3>Full SplitMoE vs. same-source variants</h3>
+                <p>Same checkpoint, data, steps and 14B activated budget.</p>
+              </div>
+              <label class="select">
+                <span>compare with</span>
+                <select id="dumbbellSelect"></select>
+              </label>
+            </div>
+            <svg id="dumbbell" class="chart-svg" role="img" aria-label="Per-dimension scores of SplitMoE and a same-source variant"></svg>
+            <div class="chart-legend"><span><i class="lg-dot lg-base"></i><em id="dumbbellBaseName">Wan2.2-MoE</em></span><span><i class="lg-dot lg-ours"></i>Full SplitMoE</span></div>
+          </div>
+
+          <div class="card chart-card reveal" id="userStudyCard">
+            <div class="chart-head">
+              <div>
+                <h3>User study</h3>
+                <p>90 VBench-2.0 prompts × 7 baselines, 65 participants, Good/Same/Bad.</p>
+              </div>
+              <div class="seg seg-sm" data-group="us">
+                <button type="button" class="active" data-value="alignment">Text–video alignment</button>
+                <button type="button" data-value="quality">Visual quality</button>
+              </div>
+            </div>
+            <div class="us-chart" id="userStudy"></div>
+            <div class="chart-legend" id="usLegend"></div>
+            <p class="chart-foot">SplitMoE wins text–video alignment against every baseline. Wan2.2, with dedicated aesthetic fine-tuning, keeps a marginal edge in visual quality. Bar lengths are read from the paper's figure.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== ANALYSIS ============================== -->
+    <section class="section" id="analysis">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">06 · Analysis</span>
+          <h2>What the experts <span class="grad">learn</span></h2>
+        </div>
+
+        <div class="card timestep reveal">
+          <div class="timestep-text">
+            <span class="eyebrow eyebrow-sm">Emergent behaviour</span>
+            <h3>Coarse-to-fine, without being told</h3>
+            <p>Tracking the routing weight of semantic experts over a 50-step denoising trajectory reveals a stage-dependent role. The weight peaks around <b>steps 10–15</b>, when the model establishes global layout, object placement and coarse semantics, then decays as denoising shifts to local appearance and detail. No timestep-conditioned routing constraint is used.</p>
+            <ul class="phase-list">
+              <li><i class="ph ph-sem"></i><span><b>Early, high noise</b> — semantic experts shape structure</span></li>
+              <li><i class="ph ph-gen"></i><span><b>Late, low noise</b> — generic experts refine detail</span></li>
+            </ul>
+          </div>
+          <div class="timestep-chart">
+            <svg id="timestepChart" class="chart-svg" role="img" aria-label="Semantic expert weight over denoising steps"></svg>
+          </div>
+        </div>
+
+        <div class="analysis-grid">
+          <figure class="card figure reveal">
+            <div class="sheet"><img src="static/images/ablation_a.webp" alt="Diffusion loss of SplitMoE versus dense baseline" loading="lazy" data-zoom></div>
+            <figcaption><b>Faster convergence.</b> Against dense fine-tuning at the same activated size, SplitMoE reaches comparable validation loss with roughly 70% of the steps and stays lower throughout.</figcaption>
+          </figure>
+          <figure class="card figure reveal">
+            <div class="sheet"><img src="static/images/ablation_b.webp" alt="Diffusion loss of full model and ablations" loading="lazy" data-zoom></div>
+            <figcaption><b>Every term matters.</b> Removing push, pull, or the whole semantic branch (standard MoE) raises the validation diffusion loss relative to the full model.</figcaption>
+          </figure>
+          <figure class="card figure reveal">
+            <div class="sheet"><img src="static/images/ablation_c.webp" alt="Prototype distribution in 2D spherical latent space" loading="lazy" data-zoom></div>
+            <figcaption><b>Prototype layout (Fig. 6c).</b> Pull only: prototypes gather in dominant regions and leave the manifold under-covered. Push only: they are driven off the data manifold. Pull + push: balanced coverage.</figcaption>
+          </figure>
+        </div>
+
+        <figure class="card figure reveal">
+          <div class="sheet"><img src="static/images/qualitative_ablation.webp" alt="Qualitative ablation: without prototype guidance, without push, without pull, and full model" loading="lazy" data-zoom></div>
+          <figcaption><b>Qualitative ablation.</b> Without prototype guidance the horse never starts running; without push, the watermelon scene drifts between frames; without pull, the subject changes abruptly. Only the full model renders the action transition while keeping object semantics consistent.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============================== BIBTEX ============================== -->
+    <section class="section" id="bibtex">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">07 · Citation</span>
+          <h2>BibTeX</h2>
+        </div>
+        <div class="card bib reveal">
+          <button class="chip-btn copy-btn" type="button" id="copyBib">Copy</button>
+<pre><code id="bibCode">@inproceedings{xu2026splitmoe,
+  title     = {Breaking the Uniformity Trap: Scaling Video Diffusion Model via SplitMoE},
+  author    = {Xu, Yu and Zhang, Yuxin and Yang, Xiao and Yang, Haotian and Wang, Yizhi and
+               Huang, Xinwei and Lin, Minxuan and Wang, Angtian and Ma, Chongyang and Tang, Fan},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2026}
+}</code></pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="3" width="11" height="26" rx="3" fill="#2ee6c5"/><rect x="18" y="3" width="11" height="11" rx="3" fill="#ffb547"/><rect x="18" y="18" width="11" height="11" rx="3" fill="#ff7a59"/></svg>
+        <span><span class="s">Split</span><span class="m">MoE</span> · NeurIPS 2026 Spotlight</span>
+      </div>
+      <p>University of Chinese Academy of Sciences · ByteDance · Canva Research · University of Science and Technology Beijing</p>
+      <p class="footer-small">All clips are generated from text prompts. Baseline clips come from the respective public models under their default settings.</p>
+    </div>
+  </footer>
+
+  <button class="to-top" id="toTop" type="button" aria-label="Back to top">↑</button>
+
+  <div class="lightbox" id="lightbox" aria-hidden="true" role="dialog">
+    <button class="lb-close" id="lbClose" type="button" aria-label="Close">×</button>
+    <div class="lb-inner">
+      <div class="lb-media" id="lbMedia"></div>
+      <p class="lb-caption" id="lbCaption"></p>
+    </div>
+  </div>
+
+  <script defer src="static/js/data.js"></script>
+  <script defer src="static/js/hero.js"></script>
+  <script defer src="static/js/sims.js"></script>
+  <script defer src="static/js/charts.js"></script>
+  <script defer src="static/js/main.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="window.__renderMath && window.__renderMath()"></script>
+</body>
+</html>
